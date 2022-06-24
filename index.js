@@ -60,6 +60,8 @@ const typeDefs = gql`
 			street: String!
 			city: String!
 		): Person
+
+		editNumber(name: String!, phone: String!): Person
 	}
 `;
 
@@ -73,7 +75,7 @@ const resolvers = {
 			if (!args.phone) return persons;
 
 			const byPhone = (person) =>
-				args.phone == "YES" ? person.phone : !person.phone;
+				args.phone === "YES" ? person.phone : !person.phone;
 
 			return persons.filter(byPhone);
 		},
@@ -85,7 +87,7 @@ const resolvers = {
 
 	Mutation: {
 		addPerson: (root, args) => {
-			if (persons.find((p) => p.name == args.name)) {
+			if (persons.find((p) => p.name === args.name)) {
 				throw new UserInputError("Name must be unique", {
 					invalidArgs: args.name,
 				});
@@ -97,6 +99,20 @@ const resolvers = {
 			persons.push(person);
 
 			return person;
+		},
+		editNumber: (root, args) => {
+			const personIndex = persons.findIndex((p) => p.name === args.name);
+
+			if (personIndex === -1) {
+				return null;
+			}
+
+			const person = persons[personIndex];
+
+			const updatePerson = { ...person, phone: args.phone };
+			persons[personIndex] = updatePerson;
+
+			return updatePerson;
 		},
 	},
 
