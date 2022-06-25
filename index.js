@@ -1,30 +1,32 @@
 import { gql, UserInputError, ApolloServer } from "apollo-server";
 
+import axios from "axios";
+
 import { v1 as uuid } from "uuid";
 
-const persons = [
-	{
-		name: "Joe",
-		phone: "111-111",
-		street: "street 11",
-		city: "city_1",
-		id: "001",
-	},
-	{
-		name: "John",
-		phone: "222-222",
-		street: "street 22",
-		city: "city_2",
-		id: "002",
-	},
-	{
-		name: "Bob",
-		phone: "333-333",
-		street: "street 33",
-		city: "city_3",
-		id: "003",
-	},
-];
+// const persons = [
+// 	{
+// 		name: "Joe",
+// 		phone: "111-111",
+// 		street: "street 11",
+// 		city: "city_1",
+// 		id: "001",
+// 	},
+// 	{
+// 		name: "John",
+// 		phone: "222-222",
+// 		street: "street 22",
+// 		city: "city_2",
+// 		id: "002",
+// 	},
+// 	{
+// 		name: "Bob",
+// 		phone: "333-333",
+// 		street: "street 33",
+// 		city: "city_3",
+// 		id: "003",
+// 	},
+// ];
 
 // data description / definition
 
@@ -71,8 +73,14 @@ const resolvers = {
 	Query: {
 		personCount: () => persons.length,
 
-		allPersons: (root, args) => {
-			if (!args.phone) return persons;
+		allPersons: async (root, args) => {
+			const { data: personsFromRestApi } = await axios.get(
+				"http://localhost:3000/persons"
+			);
+
+			console.log(personsFromRestApi);
+
+			if (!args.phone) return personsFromRestApi;
 
 			const byPhone = (person) =>
 				args.phone === "YES" ? person.phone : !person.phone;
