@@ -1,32 +1,10 @@
 import { gql, UserInputError, ApolloServer } from "apollo-server";
 
-import axios from "axios";
+// import axios from "axios";
+// import { v1 as uuid } from "uuid";
 
-import { v1 as uuid } from "uuid";
-
-// const persons = [
-// 	{
-// 		name: "Joe",
-// 		phone: "111-111",
-// 		street: "street 11",
-// 		city: "city_1",
-// 		id: "001",
-// 	},
-// 	{
-// 		name: "John",
-// 		phone: "222-222",
-// 		street: "street 22",
-// 		city: "city_2",
-// 		id: "002",
-// 	},
-// 	{
-// 		name: "Bob",
-// 		phone: "333-333",
-// 		street: "street 33",
-// 		city: "city_3",
-// 		id: "003",
-// 	},
-// ];
+import "./db.js";
+import Person from "./models/person.js";
 
 // data description / definition
 
@@ -71,56 +49,64 @@ const typeDefs = gql`
 
 const resolvers = {
 	Query: {
-		personCount: () => persons.length,
+		personCount: () => Person.collection.countDocuments(),
+		// persons.length,
 
 		allPersons: async (root, args) => {
-			const { data: personsFromRestApi } = await axios.get(
-				"http://localhost:3000/persons"
-			);
+			// if (!args.phone) return persons;
 
-			console.log(personsFromRestApi);
+			// const byPhone = (person) =>
+			// 	args.phone === "YES" ? person.phone : !person.phone;
 
-			if (!args.phone) return personsFromRestApi;
+			// return persons.filter(byPhone);
 
-			const byPhone = (person) =>
-				args.phone === "YES" ? person.phone : !person.phone;
+			// ToDo phone filter
+			if (!args.phone) return Person.find({});
+			return Person.find({ phone: { $exists: args.phone === "YES" } });
 
-			return persons.filter(byPhone);
+			// return Person.find({});
 		},
 		findPerson: (root, args) => {
 			const { name } = args;
-			return persons.find((person) => person.name == name);
+			return Person.findOne({ name });
+			// persons.find((person) => person.name == name);
 		},
 	},
 
 	Mutation: {
 		addPerson: (root, args) => {
-			if (persons.find((p) => p.name === args.name)) {
-				throw new UserInputError("Name must be unique", {
-					invalidArgs: args.name,
-				});
-			}
+			const person = new Person({ ...args });
+			return person.save();
+			// if (persons.find((p) => p.name === args.name)) {
+			// 	throw new UserInputError("Name must be unique", {
+			// 		invalidArgs: args.name,
+			// 	});
+			// }
 
-			const person = { ...args, id: uuid() };
+			// const person = { ...args, id: uuid() };
 
-			// update DB
-			persons.push(person);
+			// // update DB
+			// persons.push(person);
 
-			return person;
+			// return person;
 		},
-		editNumber: (root, args) => {
-			const personIndex = persons.findIndex((p) => p.name === args.name);
+		editNumber: async (root, args) => {
+			// const personIndex = persons.findIndex((p) => p.name === args.name);
 
-			if (personIndex === -1) {
-				return null;
-			}
+			// if (personIndex === -1) {
+			// 	return null;
+			// }
 
-			const person = persons[personIndex];
+			// const person = persons[personIndex];
 
-			const updatePerson = { ...person, phone: args.phone };
-			persons[personIndex] = updatePerson;
+			// const updatePerson = { ...person, phone: args.phone };
+			// persons[personIndex] = updatePerson;
 
-			return updatePerson;
+			// return updatePerson;
+
+			const person = await Person.findOne({ name: args.name });
+			person.phone = args.phone;
+			return person.save();
 		},
 	},
 
