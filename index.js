@@ -1,10 +1,15 @@
-import { gql, ApolloServer, UserInputError } from "apollo-server";
+import {
+	gql,
+	ApolloServer,
+	UserInputError,
+	AuthenticationError,
+} from "apollo-server";
 
 import "./db.js";
 import Person from "./models/person.js";
 import User from "./models/user.js";
-import jwt from "jsonwebtoken";
 
+import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./config.js";
 
 // data description / definition
@@ -56,7 +61,10 @@ const typeDefs = gql`
 		editNumber(name: String!, phone: String!): Person
 
 		createUser(username: String!): User
+
 		login(username: String!, password: String!): Token
+
+		addAsFriend(name: String!): User
 	}
 `;
 
@@ -77,18 +85,24 @@ const resolvers = {
 		},
 
 		me: (root, args, context) => {
-			console.log("me query OK");
-
 			return context.currentUser;
 		},
 	},
 
 	Mutation: {
-		addPerson: async (root, args) => {
+		addPerson: async (root, args, context) => {
+			const { currentUser } = context;
+			if (!currentUser)
+				throw new AuthenticationError("Not Authenticated");
+
 			const person = new Person({ ...args });
 
 			try {
 				await person.save();
+
+				currentUser.friends = currentUser.friends.concat(person);
+
+				await currentUser.save();
 			} catch (error) {
 				throw new UserInputError(error.message, { invalidArgs: args });
 			}
@@ -115,8 +129,6 @@ const resolvers = {
 		createUser: (root, args) => {
 			const user = new User({ username: args.username });
 
-			console.log("createUser OK");
-
 			return user.save().catch((error) => {
 				throw new UserInputError(error.message, {
 					invalidArgs: args,
@@ -127,9 +139,7 @@ const resolvers = {
 		login: async (root, args) => {
 			const user = await User.findOne({ username: args.username });
 
-			console.log("login OK");
-
-			// unique password !
+			// unique password for all users
 			if (!user || args.password != "secret") {
 				throw new UserInputError("wrong credentials");
 			}
@@ -142,6 +152,24 @@ const resolvers = {
 			return {
 				value: jwt.sign(userForToken, JWT_SECRET),
 			};
+		},
+
+		addAsFriend: async (root, args, { currentUser }) => {
+			if (!currentUser)
+				throw new AuthenticationError("Not Authenticated");
+
+			const person = await Person.findOne({ name: args.name });
+
+			const nonFriendlyAlready = (person) =>
+				!currentUser.friends.map((p) => p._id).includes(person._id);
+
+			if (nonFriendlyAlready(person)) {
+				currentUser.friends = currentUser.friends.concat(person);
+
+				await currentUser.save();
+			}
+
+			return currentUser;
 		},
 	},
 

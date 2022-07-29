@@ -5,7 +5,7 @@ const schema = new mongoose.Schema({
 		type: String,
 		required: true,
 		unique: true,
-		minlengthL: 3,
+		minlength: 3,
 	},
 	friends: [
 		{
